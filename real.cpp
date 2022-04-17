@@ -1,316 +1,136 @@
 #include <bits/stdc++.h>
+
 using namespace std;
 
-class node
+int page_size;
+
+class page
 {
-    friend class bptree;
 public:
-
-    bool is_leaf;
-    int *key;
     int size;
-    node* parent;
-    node** ptr;
-    node(int a);
+    int count;
+    vector <int> key;
+    page* next;
+    page* prev;
+    int space;
+    int capacity;
+    page();
 
 };
 
-node::node(int a)
-{
-    key = new int[a+1];
-    ptr = new node*[a+2];
-    size = 0;
-    is_leaf = false;
-    parent = nullptr;
-    for(int i = 0; i < a+2;i++){
-        ptr[i] = nullptr;
-    }
+page::page(){
+    count = 0;
+    next = nullptr;
+    prev = nullptr;
+    size = page_size;
+    capacity = page_size - 16;
 }
 
-class bptree
+
+class heap_file
 {
-    int d, t, d_out, t_out;
-
-    public:
-        bptree(int a, int b);
-        void insert(int);
-        void display();
-        node* root;
-        void split(node*);
-        bool overflow(node*);
-        node* fParent(node*);
-
+public:
+    heap_file();
+    int num_page;
+    page* head;
+    void insert(int x, int y);
+    void search(int x);
+    void status();
 };
 
-
-bptree::bptree(int a, int b)
-{
-    d = a;
-    t = b;
-    d_out = 0;
-    t_out = 0;
-    root = nullptr;
+heap_file::heap_file(){
+    head = new page;
+    num_page = 0;
 }
 
-
-bool bptree::overflow(node* cursor)
+void heap_file::insert(int x, int y)
 {
-    if(cursor->is_leaf == true)
-    {
-        if(cursor->size < 2*d+1)
-        return 0;
-        else
-            return 1;
+    page* start = head;
+    if(start->count == 0){
+        start->capacity = start->capacity - (x + 4);
+        start->count++;
+        start->key.push_back(y);
+        num_page++;
+
     }
     else
     {
-        if(cursor->size < 2*t+2)
-        {
-            return 0;
-        }
-        else
-            return 1;
-    }
-
-}
-
-
-
-void bptree::split(node* cursor)
-{
-
-    if(cursor->is_leaf == true)
-    {
-        //cout<<"0000";
-        node* newleaf = new node(2*d);
-        newleaf->is_leaf = true;
-        d_out++;
-
-        for(int i = d; i < cursor->size; i++)
-        {
-            newleaf->key[newleaf->size] = cursor->key[i];
-            newleaf->size++;
-        }
-
-        cursor->size = d;
-        int up = newleaf->key[0];
-
-        if(cursor == root)
-        {
-            root = new node(2*t+1);
-            t_out = 1;
-            root->key[root->size] = up;
-            root->size++;
-            root->ptr[0] = cursor;
-            root->ptr[1] = newleaf;
-            //cout<<"000000000";
-            cursor->parent = root;
-            newleaf->parent = root;
-            return;
-        }
-
-        node* prnt = fParent(cursor);
-
-        int pos = 0;
-        //cout << prnt->size;
-        for(pos = 0; pos < prnt->size; pos++)
-        {
-            if(up < prnt->key[pos]) break;
-        }
-
-        for(int j=prnt->size;j>pos+1;j--)
-        {
-            prnt->key[j] = prnt->key[j-1];
-        }
-        prnt->key[pos] = up;
-        prnt->size++;
-
-        for(int j=prnt->size;j>pos+1;j--)
-        {
-            prnt->key[j] = prnt->key[j-1];
-        }
-        prnt->ptr[pos+1]=newleaf;
-
-        split(prnt);
-    }
-    else
-    {
-        if(cursor == root)
-        {
-            node* newleaf = new node(2*t+1);
-
-            t_out++;
-            int up = cursor->key[t];
-            for(int i = t+1; i < cursor->size; i++)
-            {
-                newleaf->key[newleaf->size] = cursor->key[i];
-                newleaf->size++;
+        while(start->capacity < x + 4){
+            if(start != nullptr){
+                num_page++;
+                page* newpage = new page;
+                start->next = newpage;
+                newpage->prev = start;
             }
-
-            cursor->size = t;
-            int b = 0;
-
-            for(int j=t+1;j<=2*t+2;j++)
-            {
-                newleaf->ptr[b]=cursor->ptr[j];
-                cursor->ptr[j]->parent = newleaf;
-                b++;
-            }
-
-            root = new node(2*t+1);
-            t_out++;
-
-            root->key[root->size++]=up;
-            root->ptr[0]=cursor;
-            root->ptr[1]=newleaf;
-            cursor->parent = root;
-            newleaf->parent = root;
-
-            return;
+            start = start->next;
         }
-        else
-        {
-            node *newleaf = new node(2*t+1);
 
-            t_out++;
-
-            int up = cursor->key[t];
-            for(int i=t+1;i<cursor->size;i++)
-            {
-                newleaf->key[newleaf->size++] = cursor->key[i];
-            }
-
-            cursor->size=t;
-
-            int b=0;
-            for(int j=t+1;j<=2*t+2;j++)
-            {
-                newleaf->ptr[b]=cursor->ptr[j];
-                cursor->ptr[j]->parent = newleaf;
-                b++;
-            }
-
-            node *prnt = fParent(cursor);
-
-            int pos;
-            for(pos=0;pos<prnt->size;pos++){
-                if(up < prnt->key[pos])
-                    break;
-            }
-
-            for(int j=prnt->size;j>pos;j--)
-                    prnt->key[j]=prnt->key[j-1];
-
-            prnt->key[pos] = up;
-
-            prnt->size++;
-
-            for(int j=prnt->size;j>pos+1;j--)
-            {
-                prnt->key[j] = prnt->key[j-1];
-            }
-
-            prnt->ptr[pos + 1]=newleaf;
-
-
-            split(prnt);
-        }
+        start->capacity = start->capacity - (x + 4);
+        start->count++;
+        start->key.push_back(y);
     }
 }
 
-node* bptree::fParent(node* cursor)
-{
-    return cursor->parent;
+void heap_file::status(){
+    cout << num_page << "  ";
+    page *itr  = head;
+    while(itr!= nullptr){
+        cout << itr->count << "  ";
+        itr = itr->next;
+    }
+    cout << "\n";
 }
 
-void bptree::insert(int x)
-{
-    if(root == nullptr)
-    {
-        root = new node(2*d);
-        root->key[0] = x;
-        root->size = 1;
-        root->is_leaf = true;
-        d_out++;
-        return;
-    }
-
-    node* cursor = root;
-
-    while(1)
-    {
-        int pos;
-        //cout << cursor->size;
-        for(pos = 0; pos < cursor->size; pos++)
-        {
-            if(x < cursor->key[pos]) break;
-        }
-        //cout << pos;
-        //return;
-        if(cursor->is_leaf == false)
-        {
-            cursor = cursor->ptr[pos];
-        }
-        else
-        {
-            for(int j = cursor->size; j > pos; j--)
-            {
-                cursor->key[j] = cursor->key[j-1];
+void heap_file::search(int x){
+    page* itr = head;
+    int p_id = 0;
+    int found = 0;
+    while(itr != nullptr){
+        for(int i = 0; i < itr->key.size(); i++){
+            if(itr->key[i] == x){
+                cout << p_id << " " << i << endl;
+                found = 1;
+                break;
             }
-            cursor->key[pos] = x;
-            cursor->size++;
-            if(overflow(cursor))
-                split(cursor);
-
-        else
-            return;
         }
-        return;
+        if(found == 1) break;
 
-
+        p_id++;
+        itr = itr->next;
     }
-}
-
-
-
-
-void bptree :: display()
-{
-    node *cursor = root;
-
-    cout << t_out << " " << d_out << "  ";
-    for(int i = 0; i < cursor->size; i++)
-    {
-        cout << cursor->key[i] << " ";
+    if(found != 1){
+         cout << "-1 -1" << endl;
     }
-    cout << endl;
+
 }
 
 int main()
 {
-    int a, b;
-    cin >> a >> b;
 
-    bptree Node(a,b);
-
+    cin >> page_size;
+    heap_file node;
     while(1)
     {
-        int in;
-        cin >> in;
+        int n;
+        cin >> n;
 
-        if(in == 3)
-        {
+        if(n == 4){
             break;
         }
-        else if(in == 1)
-        {
-            int val;
-            cin >> val;
-            Node.insert(val);
+
+        else if(n == 1){
+            int x, y;
+            cin >> x >> y;
+            node.insert(x,y);
         }
-        else if(in == 2)
-        {
-            Node.display();
+        else if(n == 2){
+            node.status();
+        }
+
+        else if(n == 3){
+            int x;
+            cin >> x;
+            node.search(x);
         }
     }
 }
